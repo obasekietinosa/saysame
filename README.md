@@ -73,6 +73,8 @@ The endpoints we'll need in this phase are:
     // failure - round number does not match - HTTP 422 return RoomState
   ```
 
+  A successful update of the words would update the lastUpdatedAt field of the room and reset the Redis TTL on the room hash and the room submissions hash. This removes stale sessions automatically.
+
 - `GET /room/:roomId` returns the `RoomState` and will be polled to receive the up to date room information. Same endpoint as defined above. But called if player has submitted a word and is waiting for the other player to submit as well. Expiry and HTTP 304 mechanics apply as described above.
 
 ## Persistence
