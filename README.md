@@ -32,9 +32,9 @@ We can split the server actions by game phase
     }
   ```
 - `POST /room/:roomId/players` an endpoint to join a room. This gets called when a player clicks the link to join a room or enters the room's code on the join page. This will store the player's ID against the room ID as well. It'll let the client know the game is ready to start as well.
-- `POST /lobby` an endpoint to join the lobby and wait for a random game. If we find a player in the lobby on this turn, we can immediately match them to this player and then return `RoomState` and trigger the message that all players have joined (see below for both). Otherwise, we can return `{ message: "waiting" }` as the response and wait to be picked by another lobby player.
-- `GET /room/:roomId` returns the `RoomState` and will be polled to receive the up to date room information
-- `GET /lobby/:playerId` check to see if player has been matched to room. Also functions as a keep alive for the lobby. If a player does not send a request to this endpoint within 5 seconds we consider them no longer in the lobby and they'll be cleaned up by a background worker.
+- `POST /lobby` an endpoint to join the lobby and wait for a random game. We perform the following actions in a Lua script in order to make them atomic. First, we prune any lobby entries older than 10 seconds (5 sec ttl + buffer) and then we fetch the oldest entry in the lobby, put their id and the current entry id into a room, ending the atomic operation before returning with `RoomState` (see below). Otherwise, if there is no match in the lobby, we add a new entry with the current player id, end the atomic operation and then we return `{ message: "waiting" }` as the response and wait to be picked by another lobby player.
+- `GET /room/:roomId?lastUpdatedAt=<datetime>` returns the `RoomState` and will be polled to receive the up to date room information. It returns a 304 if the timestamp on the request is the same as the lastUpdatedAt for that room (skipping over the desrialisation and saving some CPU cycles)
+- `GET /lobby/:playerId` check to see if player has been matched to room. Also functions as a keep alive for the lobby. If a player does not send a request to this endpoint within 5 seconds we consider them no longer in the lobby and they'll be cleaned up as part of the `POST /lobby` lifecycle.
 
 ### Playing a Game
 The common DTO across API endpoints and websocket messages while playing is the RoomState. It contains the current round, the state of the round which would be PENDING, NO_MATCH or MATCH, the words each player has played for complete rounds.
@@ -73,7 +73,7 @@ The endpoints we'll need in this phase are:
     // failure - round number does not match - HTTP 422 return RoomState
   ```
 
-- `GET /room/:roomId` returns the `RoomState` and will be polled to receive the up to date room information. Same endpoint as defined above. But called if player has submitted a word and is waiting for the other player to submit as well.
+- `GET /room/:roomId` returns the `RoomState` and will be polled to receive the up to date room information. Same endpoint as defined above. But called if player has submitted a word and is waiting for the other player to submit as well. Expiry and HTTP 304 mechanics apply as described above.
 
 ## Persistence
 For persistence, we don't need long term storage here. Nor do we need ACID guarantees. However, we want a speedy data store especially for retrievals. A key value store like redis should do nicely.  
@@ -83,8 +83,16 @@ The data we store will be as follows:
   ```
   room:<roomId>
     ├─ lastUpdatedAt -> date
+    ├─ currentRound -> number
     ├─ totalRounds -> number
-    └─ player:<playerId>:<roundNumber> -> <word>
+    ├─ playerOneId -> string
+    └─ playerTwoId -> string
+  ```
+
+- **submissions** will be stored as a hash containing per round submissions for each room
+  ```
+  room:<roomId>:submission
+    └─ <playerId>:<roundNumber> -> string
   ```
   
 - **lobbies** will be stored as a sorted set (zset) with the timestamp as the score, so that we can sort by the oldest in the lobby and match them first
