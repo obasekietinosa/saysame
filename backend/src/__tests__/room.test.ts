@@ -12,6 +12,66 @@ vi.mock('../redis.js', () => {
   };
 });
 
+describe('GET /room/:roomId', () => {
+  beforeEach(async () => {
+    await redis.flushall();
+  });
+
+  afterAll(async () => {
+    await redis.quit();
+  });
+
+  it('should return 404 if room does not exist', async () => {
+    const response = await request(app)
+      .get('/room/non-existent-room')
+      .expect(404);
+
+    expect(response.body.error).toBe('Room not found');
+  });
+
+  it('should return room state', async () => {
+    // Create a room
+    const createResponse = await request(app)
+      .post('/room')
+      .send({ playerName: 'Alice' })
+      .expect(200);
+
+    const { roomId, playerId } = createResponse.body;
+
+    // Get room
+    const getResponse = await request(app)
+      .get(`/room/${roomId}`)
+      .expect(200);
+
+    expect(getResponse.body).toHaveProperty('id', roomId);
+    expect(getResponse.body).toHaveProperty('currentRound', 0);
+    expect(getResponse.body).toHaveProperty('totalRounds', 10);
+    expect(getResponse.body.players[0]).toHaveProperty('id', playerId);
+    expect(getResponse.body.players[0]).toHaveProperty('name', 'Alice');
+    // Note: getResponse.body.players[1] id will be undefined as it's not set
+    // supertest with expect toHaveProperty needs it to be present or we can use toEqual
+    expect(getResponse.body.players[1].id).toBeUndefined();
+  });
+
+  it('should return 304 if lastUpdatedAt matches', async () => {
+    // Create a room
+    const createResponse = await request(app)
+      .post('/room')
+      .send({ playerName: 'Alice' })
+      .expect(200);
+
+    const { roomId } = createResponse.body;
+
+    const roomState = await redis.hgetall(`room:${roomId}`);
+    const lastUpdatedAt = roomState.lastUpdatedAt;
+
+    // Get room with matching timestamp
+    await request(app)
+      .get(`/room/${roomId}?lastUpdatedAt=${encodeURIComponent(lastUpdatedAt)}`)
+      .expect(304);
+  });
+});
+
 describe('POST /room', () => {
   beforeEach(async () => {
     // Clear redis mock before each test
