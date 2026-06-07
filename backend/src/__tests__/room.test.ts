@@ -195,3 +195,90 @@ describe('POST /room/:roomId/players', () => {
     expect(fullResponse.body.error).toBe('Room is full');
   });
 });
+
+describe('POST /room/:roomId/words', () => {
+  beforeEach(async () => {
+    await redis.flushall();
+  });
+
+  afterAll(async () => {
+    await redis.quit();
+  });
+
+  it('should allow one player to submit a word and return PENDING', async () => {
+    const createRes = await request(app).post('/room').send({ playerName: 'Alice' });
+    const { roomId, playerId: p1Id } = createRes.body;
+    const joinRes = await request(app).post(`/room/${roomId}/players`).send({ playerName: 'Bob' });
+    const { playerId: p2Id } = joinRes.body;
+
+    const res = await request(app).post(`/room/${roomId}/words`).send({
+      playerId: p1Id,
+      word: 'apple',
+      round: 0
+    }).expect(200);
+
+    expect(res.body.currentRound).toBe(0);
+    expect(res.body.currentRoundState).toBe('PENDING');
+  });
+
+  it('should return 422 if submitting for stale round', async () => {
+    const createRes = await request(app).post('/room').send({ playerName: 'Alice' });
+    const { roomId, playerId: p1Id } = createRes.body;
+    await request(app).post(`/room/${roomId}/players`).send({ playerName: 'Bob' });
+
+    const res = await request(app).post(`/room/${roomId}/words`).send({
+      playerId: p1Id,
+      word: 'apple',
+      round: 1
+    }).expect(422);
+
+    expect(res.body.currentRound).toBe(0);
+  });
+
+  it('should transition to new round and PENDING if both players submit differing words', async () => {
+    const createRes = await request(app).post('/room').send({ playerName: 'Alice' });
+    const { roomId, playerId: p1Id } = createRes.body;
+    const joinRes = await request(app).post(`/room/${roomId}/players`).send({ playerName: 'Bob' });
+    const { playerId: p2Id } = joinRes.body;
+
+    await request(app).post(`/room/${roomId}/words`).send({ playerId: p1Id, word: 'apple', round: 0 }).expect(200);
+    const res = await request(app).post(`/room/${roomId}/words`).send({ playerId: p2Id, word: 'banana', round: 0 }).expect(200);
+
+    expect(res.body.currentRound).toBe(1);
+    expect(res.body.currentRoundState).toBe('PENDING');
+    expect(res.body.players[0].words).toEqual(['apple']);
+    expect(res.body.players[1].words).toEqual(['banana']);
+  });
+
+  it('should return MATCH if both players submit same word', async () => {
+    const createRes = await request(app).post('/room').send({ playerName: 'Alice' });
+    const { roomId, playerId: p1Id } = createRes.body;
+    const joinRes = await request(app).post(`/room/${roomId}/players`).send({ playerName: 'Bob' });
+    const { playerId: p2Id } = joinRes.body;
+
+    await request(app).post(`/room/${roomId}/words`).send({ playerId: p1Id, word: 'apple', round: 0 }).expect(200);
+    const res = await request(app).post(`/room/${roomId}/words`).send({ playerId: p2Id, word: 'apple', round: 0 }).expect(200);
+
+    expect(res.body.currentRound).toBe(1);
+    expect(res.body.currentRoundState).toBe('MATCH');
+    expect(res.body.players[0].words).toEqual(['apple']);
+    expect(res.body.players[1].words).toEqual(['apple']);
+  });
+
+  it('should return NO_MATCH if out of rounds', async () => {
+    const createRes = await request(app).post('/room').send({ playerName: 'Alice' });
+    const { roomId, playerId: p1Id } = createRes.body;
+    const joinRes = await request(app).post(`/room/${roomId}/players`).send({ playerName: 'Bob' });
+    const { playerId: p2Id } = joinRes.body;
+
+    // Fast-forward to final round
+    await redis.hset(`room:${roomId}`, 'currentRound', '9');
+
+    await request(app).post(`/room/${roomId}/words`).send({ playerId: p1Id, word: 'apple', round: 9 }).expect(200);
+    const res = await request(app).post(`/room/${roomId}/words`).send({ playerId: p2Id, word: 'banana', round: 9 }).expect(200);
+
+    expect(res.body.currentRound).toBe(10);
+    expect(res.body.currentRoundState).toBe('NO_MATCH');
+    expect(res.body.players[0].words).toHaveLength(10);
+  });
+});

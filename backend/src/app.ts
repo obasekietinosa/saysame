@@ -245,6 +245,126 @@ app.get('/lobby/:playerId', async (req, res) => {
   res.status(404).json({ error: 'Player not found in lobby' });
 });
 
+export async function getRoomState(roomId: string) {
+  const roomHash = await redis.hgetall(`room:${roomId}`);
+
+  if (Object.keys(roomHash).length === 0) {
+    return null;
+  }
+
+  const currentRound = parseInt(roomHash.currentRound || '0', 10);
+  const totalRounds = parseInt(roomHash.totalRounds || '10', 10);
+
+  const submissions = await redis.hgetall(`room:${roomId}:submission`);
+
+  const playerOneId = roomHash.playerOneId;
+  const playerTwoId = roomHash.playerTwoId;
+
+  const playerOneWords: string[] = [];
+  const playerTwoWords: string[] = [];
+
+  let currentRoundState = "PENDING";
+
+  for (let i = 0; i < currentRound; i++) {
+    const p1Word = submissions[`${playerOneId}:${i}`] || "";
+    const p2Word = submissions[`${playerTwoId}:${i}`] || "";
+    playerOneWords.push(p1Word);
+    playerTwoWords.push(p2Word);
+  }
+
+  if (currentRound > 0) {
+    const p1LastWord = submissions[`${playerOneId}:${currentRound - 1}`];
+    const p2LastWord = submissions[`${playerTwoId}:${currentRound - 1}`];
+    if (p1LastWord && p2LastWord && p1LastWord === p2LastWord) {
+      currentRoundState = "MATCH";
+    } else if (currentRound === totalRounds) {
+      currentRoundState = "NO_MATCH";
+    }
+  }
+
+  return {
+    id: roomId,
+    lastUpdatedAt: roomHash.lastUpdatedAt,
+    currentRound: currentRound,
+    totalRounds: totalRounds,
+    currentRoundState: currentRoundState,
+    players: [
+      { id: playerOneId, name: roomHash.playerOneName, words: playerOneWords },
+      { id: playerTwoId, name: roomHash.playerTwoName, words: playerTwoWords }
+    ]
+  };
+}
+
+app.post('/room/:roomId/words', async (req, res) => {
+  const { roomId } = req.params;
+  const { playerId, word, round } = req.body;
+
+  if (!playerId || !word || round === undefined) {
+    res.status(400).json({ error: 'playerId, word, and round are required' });
+    return;
+  }
+
+  const roomHash = await redis.hgetall(`room:${roomId}`);
+
+  if (Object.keys(roomHash).length === 0) {
+    res.status(404).json({ error: 'Room not found' });
+    return;
+  }
+
+  if (roomHash.playerOneId !== playerId && roomHash.playerTwoId !== playerId) {
+    res.status(403).json({ error: 'Player not in room' });
+    return;
+  }
+
+  const currentRound = parseInt(roomHash.currentRound || '0', 10);
+  const totalRounds = parseInt(roomHash.totalRounds || '10', 10);
+
+  if (round !== currentRound) {
+    const roomState = await getRoomState(roomId);
+    res.status(422).json(roomState);
+    return;
+  }
+
+  if (currentRound >= totalRounds) {
+    res.status(400).json({ error: 'Game has already ended' });
+    return;
+  }
+
+  // Guard against submitting if game ended with a match
+  if (currentRound > 0) {
+    const p1LastWord = await redis.hget(`room:${roomId}:submission`, `${roomHash.playerOneId}:${currentRound - 1}`);
+    const p2LastWord = await redis.hget(`room:${roomId}:submission`, `${roomHash.playerTwoId}:${currentRound - 1}`);
+    if (p1LastWord && p2LastWord && p1LastWord === p2LastWord) {
+      res.status(400).json({ error: 'Game has already ended with a match' });
+      return;
+    }
+  }
+
+  // Save the word
+  await redis.hset(`room:${roomId}:submission`, `${playerId}:${round}`, word);
+
+  // Check if both players have submitted for this round
+  const submissions = await redis.hgetall(`room:${roomId}:submission`);
+  const p1Word = submissions[`${roomHash.playerOneId}:${round}`];
+  const p2Word = submissions[`${roomHash.playerTwoId}:${round}`];
+
+  let nextRound = currentRound;
+  if (p1Word && p2Word) {
+    nextRound = currentRound + 1;
+    await redis.hset(`room:${roomId}`, 'currentRound', nextRound.toString());
+  }
+
+  const now = new Date().toISOString();
+  await redis.hset(`room:${roomId}`, 'lastUpdatedAt', now);
+
+  // Reset TTL to 1 hour (3600 seconds)
+  await redis.expire(`room:${roomId}`, 3600);
+  await redis.expire(`room:${roomId}:submission`, 3600);
+
+  const roomState = await getRoomState(roomId);
+  res.json(roomState);
+});
+
 app.get('/room/:roomId', async (req, res) => {
   const { roomId } = req.params;
   const { lastUpdatedAt } = req.query;
@@ -261,20 +381,6 @@ app.get('/room/:roomId', async (req, res) => {
     return;
   }
 
-  // Here you would also fetch words for the completed rounds,
-  // but for the lobby phase and initial GET, words are empty.
-  // Assuming a generic RoomState return for now, actual implementation
-  // needs to join with submissions hash if rounds > 0.
-
-  res.json({
-    id: roomId,
-    lastUpdatedAt: roomHash.lastUpdatedAt,
-    currentRound: parseInt(roomHash.currentRound || '0', 10),
-    totalRounds: parseInt(roomHash.totalRounds || '10', 10),
-    currentRoundState: "PENDING",
-    players: [
-      { id: roomHash.playerOneId, name: roomHash.playerOneName, words: [] },
-      { id: roomHash.playerTwoId, name: roomHash.playerTwoName, words: [] }
-    ]
-  });
+  const roomState = await getRoomState(roomId);
+  res.json(roomState);
 });
