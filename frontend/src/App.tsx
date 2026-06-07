@@ -1,19 +1,12 @@
 import { Routes, Route } from 'react-router-dom'
-import './App.css'
-
-function Home() {
-  return (
-    <div className="p-8">
-      <h1 className="text-4xl font-bold mb-4">Welcome to SaySame</h1>
-      <p className="text-lg">This is the scaffolded frontend using React, React Router, and Tailwind CSS.</p>
-    </div>
-  )
-}
+import { Home } from './pages/Home'
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/set-name" element={<div className="p-8 text-center"><h1 className="text-2xl">Set Name Page (Placeholder)</h1></div>} />
+      <Route path="/join" element={<div className="p-8 text-center"><h1 className="text-2xl">Join Page (Placeholder)</h1></div>} />
     </Routes>
   )
 }
