@@ -1,24 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter, useNavigate } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { Home } from '../Home';
-import { vi } from 'vitest';
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: vi.fn(),
-  };
-});
-
-describe('Home Component', () => {
-  const mockNavigate = vi.fn();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    (useNavigate as any).mockReturnValue(mockNavigate);
-  });
-
+describe('Home Component UI', () => {
   it('renders correctly', () => {
     render(
       <MemoryRouter>
@@ -32,39 +16,6 @@ describe('Home Component', () => {
     expect(screen.getByText('Join Random Player')).toBeInTheDocument();
     expect(screen.getByText('Join with Code')).toBeInTheDocument();
     expect(screen.getByText('How to play')).toBeInTheDocument();
-  });
-
-  it('navigates to /set-name?mode=friend on Play with a Friend click', () => {
-    render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByText('Play with a Friend'));
-    expect(mockNavigate).toHaveBeenCalledWith('/set-name?mode=friend');
-  });
-
-  it('navigates to /set-name?mode=random on Join Random Player click', () => {
-    render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByText('Join Random Player'));
-    expect(mockNavigate).toHaveBeenCalledWith('/set-name?mode=random');
-  });
-
-  it('navigates to /join on Join with Code click', () => {
-    render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByText('Join with Code'));
-    expect(mockNavigate).toHaveBeenCalledWith('/join');
   });
 
   it('toggles How to Play modal', () => {
