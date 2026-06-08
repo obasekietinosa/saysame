@@ -32,7 +32,7 @@ jobs:
       - name: Deploy via SFTP
         uses: SamKirkland/web-deploy@v1
         with:
-          target-backend: ${{ secrets.SSH_HOST }}
+          target-server: ${{ secrets.SSH_HOST }}
           remote-user: ${{ secrets.SSH_USER }}
           private-ssh-key: ${{ secrets.SSH_KEY }}
           source-path: ./backend/
