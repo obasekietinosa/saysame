@@ -122,7 +122,7 @@ describe('App Routing', () => {
 
     fireEvent.click(screen.getByText('Join with Code'));
     expect(screen.getByTestId('location-display')).toHaveTextContent('/join');
-    // We expect the placeholder from App.tsx since we don't have the Join page fully implemented
-    expect(screen.getByText('Join Page (Placeholder)')).toBeInTheDocument();
+    // We now have the Join component implemented
+    expect(screen.getByText('Join a Game')).toBeInTheDocument();
   });
 });
