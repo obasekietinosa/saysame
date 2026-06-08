@@ -5,6 +5,7 @@ import { Waiting } from '../Waiting';
 import * as router from 'react-router-dom';
 import { server } from '../../setupTests';
 import { http, HttpResponse } from 'msw';
+import { API_URL } from '../../config';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -33,7 +34,7 @@ describe('Waiting Component', () => {
 
   it('renders loading state initially', () => {
     server.use(
-      http.get('http://localhost:3000/lobby/p1', () => {
+      http.get(API_URL + '/lobby/p1', () => {
         return HttpResponse.json({ message: 'waiting' });
       })
     );
@@ -50,7 +51,7 @@ describe('Waiting Component', () => {
   it('navigates to room when matched on poll', async () => {
     let callCount = 0;
     server.use(
-      http.get('http://localhost:3000/lobby/p1', () => {
+      http.get(API_URL + '/lobby/p1', () => {
         callCount++;
         if (callCount === 1) {
             return HttpResponse.json({ message: 'waiting' });
@@ -83,10 +84,10 @@ describe('Waiting Component', () => {
 
   it('re-registers and navigates if matched immediately on re-register', async () => {
     server.use(
-      http.get('http://localhost:3000/lobby/p1', () => {
+      http.get(API_URL + '/lobby/p1', () => {
         return HttpResponse.json({ error: 'Player not found in lobby' }, { status: 404 });
       }),
-      http.post('http://localhost:3000/lobby', () => {
+      http.post(API_URL + '/lobby', () => {
         return HttpResponse.json({ id: 'room-456', players: [{}, {}] });
       })
     );

@@ -3,6 +3,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import App from '../App';
 import { server } from '../setupTests';
 import { http, HttpResponse } from 'msw';
+import { API_URL } from '../config';
 
 const LocationDisplay = () => {
   const location = useLocation();
@@ -16,7 +17,7 @@ describe('App Routing', () => {
 
   it('navigates from Home to SetName (Friend Mode) and completes setup', async () => {
     server.use(
-      http.post('http://localhost:3000/room', () => {
+      http.post(API_URL + '/room', () => {
         return HttpResponse.json({ roomId: '123', playerId: 'abc', playerName: 'TestFriend' });
       })
     );
@@ -51,7 +52,7 @@ describe('App Routing', () => {
 
   it('navigates from Home to SetName (Random Mode - Waiting)', async () => {
     server.use(
-      http.post('http://localhost:3000/lobby', () => {
+      http.post(API_URL + '/lobby', () => {
         return HttpResponse.json({ message: 'waiting', playerId: 'xyz' });
       })
     );
@@ -81,7 +82,7 @@ describe('App Routing', () => {
 
   it('navigates from Home to SetName (Random Mode - Matched Immediately)', async () => {
     server.use(
-      http.post('http://localhost:3000/lobby', () => {
+      http.post(API_URL + '/lobby', () => {
         return HttpResponse.json({
           id: 'room-789',
           players: [{ id: 'xyz', name: 'TestRandomMatch' }, { id: 'other', name: 'Other' }]

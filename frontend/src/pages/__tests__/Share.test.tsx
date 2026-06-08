@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Share } from '../Share';
 import { server } from '../../setupTests';
 import { http, HttpResponse } from 'msw';
+import { API_URL } from '../../config';
 import { vi } from 'vitest';
 
 describe('Share Component UI', () => {
@@ -18,7 +19,7 @@ describe('Share Component UI', () => {
 
   it('renders correctly with room link', () => {
     server.use(
-      http.get('http://localhost:3000/room/test-room', () => {
+      http.get(API_URL + '/room/test-room', () => {
         return HttpResponse.json({
           id: 'test-room',
           players: [
@@ -55,7 +56,7 @@ describe('Share Component UI', () => {
 
   it('copies link to clipboard', async () => {
     server.use(
-      http.get('http://localhost:3000/room/test-room', () => {
+      http.get(API_URL + '/room/test-room', () => {
         return HttpResponse.json({
           id: 'test-room',
           players: [
@@ -102,7 +103,7 @@ describe('Share Component UI', () => {
     let callCount = 0;
 
     server.use(
-      http.get('http://localhost:3000/room/test-room', () => {
+      http.get(API_URL + '/room/test-room', () => {
         callCount++;
         if (callCount === 1) {
           // First poll: no second player

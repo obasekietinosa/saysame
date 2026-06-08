@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SetName } from '../SetName';
 import { server } from '../../setupTests';
 import { http, HttpResponse } from 'msw';
+import { API_URL } from '../../config';
 
 describe('SetName Component UI', () => {
   beforeEach(() => {
@@ -35,7 +36,7 @@ describe('SetName Component UI', () => {
 
   it('shows error when fetch fails', async () => {
     server.use(
-      http.post('http://localhost:3000/room/spec-123/players', () => {
+      http.post(API_URL + '/room/spec-123/players', () => {
         return HttpResponse.json({ error: 'Room not found' }, { status: 404 });
       })
     );
@@ -60,7 +61,7 @@ describe('SetName Component UI', () => {
 
   it('shows loading state during submission', async () => {
     server.use(
-      http.post('http://localhost:3000/room', async () => {
+      http.post(API_URL + '/room', async () => {
         await new Promise((r) => setTimeout(r, 100)); // Delay response
         return HttpResponse.json({ roomId: '123', playerId: 'abc', playerName: 'Test' });
       })
