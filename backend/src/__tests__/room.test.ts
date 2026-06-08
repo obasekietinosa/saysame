@@ -67,7 +67,7 @@ describe('GET /room/:roomId', () => {
 
     // Get room with matching timestamp
     await request(app)
-      .get(`/room/${roomId}?lastUpdatedAt=${encodeURIComponent(lastUpdatedAt)}`)
+      .get(`/room/${roomId}?lastUpdatedAt=${encodeURIComponent(lastUpdatedAt!)}`)
       .expect(304);
   });
 });
