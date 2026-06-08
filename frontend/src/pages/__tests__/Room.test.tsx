@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Room } from '../Room';
 import { server } from '../../setupTests';
 import { http, HttpResponse } from 'msw';
+import { API_URL } from '../../config';
 
 describe('Room Component', () => {
   beforeEach(() => {
@@ -30,7 +31,7 @@ describe('Room Component', () => {
 
   it('fetches and displays initial room state', async () => {
     server.use(
-      http.get('http://localhost:3000/room/room123', () => {
+      http.get(API_URL + '/room/room123', () => {
         return HttpResponse.json({
           id: 'room123',
           lastUpdatedAt: '2023-01-01T00:00:00Z',
@@ -60,7 +61,7 @@ describe('Room Component', () => {
 
   it('submits a word and shows waiting state', async () => {
     server.use(
-      http.get('http://localhost:3000/room/room123', () => {
+      http.get(API_URL + '/room/room123', () => {
         return HttpResponse.json({
           id: 'room123',
           lastUpdatedAt: '2023-01-01T00:00:00Z',
@@ -73,7 +74,7 @@ describe('Room Component', () => {
           ]
         });
       }),
-      http.post('http://localhost:3000/room/room123/words', async ({ request }) => {
+      http.post(API_URL + '/room/room123/words', async ({ request }) => {
         const body = await request.json() as { playerId: string, word: string, round: number };
         expect(body).toEqual({ playerId: 'p1', word: 'banana', round: 0 });
         return HttpResponse.json({
@@ -112,7 +113,7 @@ describe('Room Component', () => {
 
   it('shows game over win state', async () => {
     server.use(
-      http.get('http://localhost:3000/room/room123', () => {
+      http.get(API_URL + '/room/room123', () => {
         return HttpResponse.json({
           id: 'room123',
           lastUpdatedAt: '2023-01-01T00:00:00Z',
