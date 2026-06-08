@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 
 // Allow overriding the Redis URL via environment variable
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
