@@ -112,7 +112,13 @@ export function Room() {
           const data = await res.json();
           setRoomState(data);
           lastUpdatedAtRef.current = data.lastUpdatedAt;
-          setHasSubmittedThisRound(true);
+
+          if (roomState && data.currentRound > roomState.currentRound) {
+              setHasSubmittedThisRound(false);
+              setWord('');
+          } else {
+              setHasSubmittedThisRound(true);
+          }
       }
 
     } catch (err: any) {
