@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { API_URL } from '../config';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { Input } from '../components/Input';
 
 export function Share() {
   const [searchParams] = useSearchParams();
@@ -41,10 +44,10 @@ export function Share() {
 
   if (!roomId) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
-          <p className="text-red-500">{error || 'Invalid access'}</p>
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <Card className="p-8 max-w-md w-full text-center">
+          <p className="text-primary font-black text-xl">{error || 'Invalid access'}</p>
+        </Card>
       </div>
     );
   }
@@ -62,36 +65,37 @@ export function Share() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
-        <h1 className="text-3xl font-extrabold text-indigo-600 mb-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <Card className="p-8 max-w-md w-full text-center">
+        <h1 className="text-4xl font-black text-foreground mb-4 drop-shadow-[2px_2px_0px_var(--color-secondary)] uppercase">
           Share this link!
         </h1>
-        <p className="text-gray-600 mb-6">
+        <p className="text-foreground font-medium mb-8">
           Send this link to your friend so they can join the game. The game will start automatically when they join.
         </p>
 
-        <div className="flex items-center space-x-2 mb-8">
-          <input
+        <div className="flex flex-col md:flex-row items-center gap-4 mb-8">
+          <Input
             type="text"
             readOnly
             value={shareLink}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-md bg-gray-50 focus:outline-none"
+            className="flex-1 bg-muted"
             data-testid="share-link-input"
           />
-          <button
+          <Button
             onClick={copyToClipboard}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded transition duration-200"
+            variant="primary"
+            className="w-full md:w-auto min-w-[120px]"
           >
             {copied ? 'Copied!' : 'Copy'}
-          </button>
+          </Button>
         </div>
 
-        <div className="flex justify-center items-center space-x-2">
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
-          <p className="text-indigo-600 font-medium">Waiting for opponent...</p>
+        <div className="flex justify-center items-center space-x-4">
+          <div className="w-8 h-8 border-[4px] border-border bg-secondary shadow-[4px_4px_0px_0px_var(--color-border)] animate-spin"></div>
+          <p className="text-foreground font-black uppercase tracking-wide">Waiting for opponent...</p>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -134,7 +134,7 @@ describe('Room Component', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText('You Win!')).toBeInTheDocument();
+    expect(screen.getByText('Match!')).toBeInTheDocument();
     expect(screen.getByText('It took you 1 rounds to think alike.')).toBeInTheDocument();
   });
 });
