@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { API_URL } from '../config';
+import { getRoomState } from '../utils/api';
 
-type Player = {
+export type Player = {
   id: string;
   name: string;
   words: string[];
@@ -22,11 +22,7 @@ export function useRoomPolling(roomId: string | null, lastUpdatedAtRef?: React.M
   return useQuery<RoomState>({
     queryKey: ['room', roomId],
     queryFn: async () => {
-      const url = new URL(`${API_URL}/room/${roomId}`);
-      if (lastUpdatedAtRef && lastUpdatedAtRef.current) {
-        url.searchParams.append('lastUpdatedAt', lastUpdatedAtRef.current);
-      }
-      const res = await fetch(url.toString());
+      const res = await getRoomState(roomId!, lastUpdatedAtRef?.current);
       if (res.status === 304) {
          // Return previous data from cache
          return queryClient.getQueryData(['room', roomId]) as RoomState;
