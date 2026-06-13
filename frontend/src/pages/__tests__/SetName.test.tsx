@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SetName } from '../SetName';
 import { server } from '../../setupTests';
@@ -81,9 +81,11 @@ describe('SetName Component UI', () => {
     fireEvent.click(button);
 
     // Should disable input and button and show 'Continuing...'
-    expect(button).toBeDisabled();
-    expect(button).toHaveTextContent('Continuing...');
-    expect(screen.getByPlaceholderText('Enter your name')).toBeDisabled();
+    await waitFor(() => {
+        expect(button).toBeDisabled();
+        expect(button).toHaveTextContent('Continuing...');
+        expect(screen.getByPlaceholderText('Enter your name')).toBeDisabled();
+    });
 
     // Wait for the simulated request to finish so we don't leak async logic
     await waitFor(() => {

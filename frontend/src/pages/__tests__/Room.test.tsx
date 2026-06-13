@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '../../utils/test-utils';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Room } from '../Room';
@@ -52,7 +52,7 @@ describe('Room Component', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText('Player 1')).toBeInTheDocument();
+    expect(await screen.findByText('Player 1')).toBeInTheDocument();
     expect(screen.getByText('Player 2')).toBeInTheDocument();
     expect(screen.getByText('apple')).toBeInTheDocument();
     expect(screen.getByText('orange')).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe('Room Component', () => {
       await Promise.resolve();
     });
 
-    const input = screen.getByPlaceholderText('Enter your word...');
+    const input = await screen.findByPlaceholderText('Enter your word...');
     const submitBtn = screen.getByRole('button', { name: 'Submit' });
 
     fireEvent.change(input, { target: { value: 'banana' } });
@@ -106,7 +106,7 @@ describe('Room Component', () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(screen.getByPlaceholderText('Waiting for opponent...')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Waiting for opponent...')).toBeInTheDocument();
     expect(screen.getByText('Waiting...')).toBeInTheDocument();
     expect(screen.getByText('Thinking...')).toBeInTheDocument();
   });
@@ -134,7 +134,7 @@ describe('Room Component', () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText('Match!')).toBeInTheDocument();
+    expect(await screen.findByText('Match!')).toBeInTheDocument();
     expect(screen.getByText('It took you 1 rounds to think alike.')).toBeInTheDocument();
   });
 });

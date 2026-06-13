@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '../../utils/test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Waiting } from '../Waiting';
@@ -98,10 +98,8 @@ describe('Waiting Component', () => {
       </MemoryRouter>
     );
 
-    await act(async () => {
-       await Promise.resolve();
+    await waitFor(() => {
+        expect(navigateMock).toHaveBeenCalledWith('/room/room-456');
     });
-
-    expect(navigateMock).toHaveBeenCalledWith('/room/room-456');
   });
 });

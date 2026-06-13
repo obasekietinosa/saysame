@@ -1,131 +1,39 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { API_URL } from '../config';
+import { useRoomPolling } from '../hooks/useRoomPolling';
+import { useSubmitWord } from '../hooks/useSubmitWord';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-
-type Player = {
-  id: string;
-  name: string;
-  words: string[];
-};
-
-type RoomState = {
-  id: string;
-  lastUpdatedAt: string;
-  currentRound: number;
-  totalRounds: number;
-  currentRoundState: 'PENDING' | 'NO_MATCH' | 'MATCH';
-  players: [Player, Player];
-};
 
 export function Room() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
 
-  const [roomState, setRoomState] = useState<RoomState | null>(null);
-  const [error, setError] = useState('');
   const [word, setWord] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [hasSubmittedThisRound, setHasSubmittedThisRound] = useState(false);
 
   const lastUpdatedAtRef = useRef<string | null>(null);
 
+  const { data: roomState } = useRoomPolling(roomId || null, lastUpdatedAtRef);
+
+  const previousRoundRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!roomId) return;
+    if (roomState) {
+       if (previousRoundRef.current !== null && roomState.currentRound > previousRoundRef.current) {
+          setHasSubmittedThisRound(false);
+          setWord('');
+       }
+       previousRoundRef.current = roomState.currentRound;
+    }
+  }, [roomState?.currentRound]);
 
-    let intervalId: number;
+  const mutation = useSubmitWord(roomId, roomState, lastUpdatedAtRef, setHasSubmittedThisRound, setWord);
 
-    const pollRoom = async () => {
-      try {
-        const url = new URL(`${API_URL}/room/${roomId}`);
-        if (lastUpdatedAtRef.current) {
-          url.searchParams.append('lastUpdatedAt', lastUpdatedAtRef.current);
-        }
-
-        const res = await fetch(url.toString());
-
-        if (res.status === 304) {
-          return;
-        }
-
-        if (!res.ok) {
-          throw new Error('Failed to fetch room state');
-        }
-
-        const data: RoomState = await res.json();
-
-        if (roomState && data.currentRound > roomState.currentRound) {
-           setHasSubmittedThisRound(false);
-           setWord('');
-        }
-
-        setRoomState(data);
-        lastUpdatedAtRef.current = data.lastUpdatedAt;
-
-      } catch (err) {
-        console.error("Polling error", err);
-      }
-    };
-
-    pollRoom();
-    intervalId = window.setInterval(pollRoom, 2000);
-
-    return () => clearInterval(intervalId);
-  }, [roomId, roomState?.currentRound]);
-
-  const handleSubmitWord = async (e: React.FormEvent) => {
+  const handleSubmitWord = (e: React.FormEvent) => {
     e.preventDefault();
     if (!word.trim() || !roomState) return;
-
-    const playerId = sessionStorage.getItem('playerId');
-    if (!playerId) {
-      setError('Player ID not found');
-      return;
-    }
-
-    setSubmitting(true);
-    setError('');
-
-    try {
-      const res = await fetch(`${API_URL}/room/${roomId}/words`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId,
-          word: word.trim(),
-          round: roomState.currentRound,
-        }),
-      });
-
-      if (!res.ok) {
-         if (res.status === 422) {
-             const data = await res.json();
-             setRoomState(data);
-             lastUpdatedAtRef.current = data.lastUpdatedAt;
-             setWord('');
-         } else {
-             const data = await res.json();
-             throw new Error(data.error || 'Failed to submit word');
-         }
-      } else {
-          const data = await res.json();
-          setRoomState(data);
-          lastUpdatedAtRef.current = data.lastUpdatedAt;
-
-          if (roomState && data.currentRound > roomState.currentRound) {
-              setHasSubmittedThisRound(false);
-              setWord('');
-          } else {
-              setHasSubmittedThisRound(true);
-          }
-      }
-
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-    } finally {
-      setSubmitting(false);
-    }
+    mutation.mutate({ wordToSubmit: word.trim(), round: roomState.currentRound });
   };
 
   if (!roomState) {
@@ -212,14 +120,14 @@ export function Room() {
             </div>
           ) : (
             <div className="mt-auto bg-white p-4 md:p-6 rounded-xl border-[3px] border-border shadow-[4px_4px_0px_0px_var(--color-border)] z-10">
-               {error && <p className="text-primary font-bold text-sm mb-4 text-center">{error}</p>}
+               {mutation.error && <p className="text-primary font-bold text-sm mb-4 text-center">{mutation.error instanceof Error ? mutation.error.message : 'An error occurred'}</p>}
 
                <form onSubmit={handleSubmitWord} className="flex flex-col sm:flex-row gap-4">
                  <Input
                    type="text"
                    value={word}
                    onChange={(e) => setWord(e.target.value)}
-                   disabled={submitting || hasSubmittedThisRound}
+                   disabled={mutation.isPending || hasSubmittedThisRound}
                    placeholder={hasSubmittedThisRound ? "Waiting for opponent..." : "Enter your word..."}
                    className="flex-grow font-black text-xl uppercase placeholder:normal-case placeholder:font-medium placeholder:text-gray-400"
                    autoFocus
@@ -227,10 +135,10 @@ export function Room() {
                  <Button
                    type="submit"
                    variant="primary"
-                   disabled={!word.trim() || submitting || hasSubmittedThisRound}
+                   disabled={!word.trim() || mutation.isPending || hasSubmittedThisRound}
                    className="min-w-[140px] text-xl"
                  >
-                   {submitting ? 'Sending...' : 'Submit'}
+                   {mutation.isPending ? 'Sending...' : 'Submit'}
                  </Button>
                </form>
             </div>

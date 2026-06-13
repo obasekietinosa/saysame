@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { API_URL } from '../config';
+import { useRoomPolling } from '../hooks/useRoomPolling';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
@@ -16,33 +16,24 @@ export function Share() {
   useEffect(() => {
     if (!roomId) {
       setError('Room ID is missing');
-      return;
     }
+  }, [roomId]);
 
-    const intervalId = setInterval(async () => {
-      try {
-        const res = await fetch(`${API_URL}/room/${roomId}`);
-        if (!res.ok) {
-          if (res.status === 304) return;
-          throw new Error('Failed to fetch room state');
-        }
+  const { data: roomData, isError } = useRoomPolling(roomId);
 
-        const data = await res.json();
+  useEffect(() => {
+    if (isError) {
+       console.error("Error polling room");
+    }
+  }, [isError]);
 
-        // If the second player has joined (playerTwoId is set)
-        if (data && data.players && data.players.length === 2 && data.players[1].id) {
-          clearInterval(intervalId);
-          navigate(`/room/${roomId}`);
-        }
-      } catch (err) {
-        console.error("Error polling room:", err);
-      }
-    }, 2000);
+  useEffect(() => {
+    if (roomData && roomData.players && roomData.players.length === 2 && roomData.players[1].id) {
+      navigate(`/room/${roomId}`);
+    }
+  }, [roomData, navigate, roomId]);
 
-    return () => clearInterval(intervalId);
-  }, [roomId, navigate]);
-
-  if (!roomId) {
+  if (!roomId || error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <Card className="p-8 max-w-md w-full text-center">

@@ -1,71 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../config';
+import { useLobbyPolling } from '../hooks/useLobbyPolling';
 import { Card } from '../components/Card';
 
 export function Waiting() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
 
+  const { data: lobbyData, isError } = useLobbyPolling();
+
   useEffect(() => {
-    let intervalId: number;
+    if (isError) {
+      setError('An error occurred while waiting. Please try again.');
+    }
+  }, [isError]);
 
-    const pollLobby = async () => {
-      const playerId = sessionStorage.getItem('playerId');
-      const playerName = sessionStorage.getItem('playerName');
-
-      if (!playerId || !playerName) {
-        setError('Missing player details. Please go back to home.');
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_URL}/lobby/${playerId}`);
-
-        if (res.status === 404) {
-          // Re-register
-          const reRegRes = await fetch(`${API_URL}/lobby`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerName }),
-          });
-
-          if (!reRegRes.ok) {
-            throw new Error('Failed to rejoin lobby');
-          }
-
-          const data = await reRegRes.json();
-          if (data.message === 'waiting') {
-             sessionStorage.setItem('playerId', data.playerId);
-          } else if (data.id) {
-             // Immediate match on re-register
-             clearInterval(intervalId);
-             navigate(`/room/${data.id}`);
-          }
-        } else if (!res.ok) {
-          throw new Error('Error checking lobby state');
-        } else {
-          const data = await res.json();
-          if (data.id && data.players) {
-            clearInterval(intervalId);
-            navigate(`/room/${data.id}`);
-          }
-          // If data.message === 'waiting', just keep polling
-        }
-      } catch (err) {
-        console.error(err);
-        // We do not stop polling on a single fetch error to handle transient issues
-      }
-    };
-
-    // Initial check
-    pollLobby();
-
-    // Poll every 2 seconds
-    intervalId = window.setInterval(pollLobby, 2000);
-
-    return () => clearInterval(intervalId);
-  }, [navigate]);
+  useEffect(() => {
+    if (lobbyData && lobbyData.id) {
+       navigate(`/room/${lobbyData.id}`);
+    }
+  }, [lobbyData, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
