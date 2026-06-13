@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { API_URL } from '../config';
 import { useNavigate } from 'react-router-dom';
+import { joinRandomLobby, joinRoom, createFriendRoom } from '../utils/api';
 
 export function useJoinGame(mode: string | null, roomId: string | null, name: string) {
   const navigate = useNavigate();
@@ -8,38 +8,14 @@ export function useJoinGame(mode: string | null, roomId: string | null, name: st
   return useMutation({
     mutationFn: async () => {
       if (mode === 'random') {
-        const res = await fetch(`${API_URL}/lobby`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerName: name.trim() }),
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Failed to join lobby');
-        }
-        return { type: 'random', data: await res.json() };
+        const data = await joinRandomLobby(name.trim());
+        return { type: 'random', data };
       } else if (roomId) {
-        const res = await fetch(`${API_URL}/room/${roomId}/players`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerName: name.trim() }),
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Failed to join room');
-        }
-        return { type: 'room', data: await res.json() };
+        const data = await joinRoom(roomId, name.trim());
+        return { type: 'room', data };
       } else if (mode === 'friend') {
-        const res = await fetch(`${API_URL}/room`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerName: name.trim() }),
-        });
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || 'Failed to create room');
-        }
-        return { type: 'friend', data: await res.json() };
+        const data = await createFriendRoom(name.trim());
+        return { type: 'friend', data };
       } else {
         throw new Error('Invalid game mode');
       }
@@ -59,7 +35,11 @@ export function useJoinGame(mode: string | null, roomId: string | null, name: st
            navigate(`/room/${data.id}`);
         }
       } else if (type === 'room') {
-        if (data.id) {
+        if (data.roomId) {
+          sessionStorage.setItem('playerId', data.playerId);
+          sessionStorage.setItem('playerName', data.playerName);
+          navigate(`/room/${data.roomId}`);
+        } else if (data.id) {
           const me = data.players.find((p: { id: string, name: string }) => p.name === name.trim());
           if (me) {
             sessionStorage.setItem('playerId', me.id);

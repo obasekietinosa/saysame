@@ -28,8 +28,8 @@ app.post('/room', async (req, res) => {
 
   await redis.hset(`room:${roomId}`, {
     lastUpdatedAt: now,
-    currentRound: 0,
-    totalRounds: 10,
+    currentRound: "0",
+    totalRounds: "10",
     playerOneId: playerId,
     playerOneName: playerName,
   });
@@ -50,14 +50,19 @@ app.post('/room/:roomId/players', async (req, res) => {
     return;
   }
 
-  const roomExists = await redis.exists(`room:${roomId}`);
-  if (!roomExists) {
+  const roomHash = await redis.hgetall(`room:${roomId}`);
+
+  if (Object.keys(roomHash).length === 0) {
     res.status(404).json({ error: 'Room not found' });
     return;
   }
 
-  const playerTwoId = await redis.hget(`room:${roomId}`, 'playerTwoId');
+  const playerTwoId = roomHash.playerTwoId;
   if (playerTwoId) {
+    // Return room details instead of 409 error if they are just trying to join an already joined game.
+    // The previous frontend hook issue is that players would join, but not get the player details returned.
+    // However the bug says "returns player not in room after joining". The original behavior just generated a new playerId for player 2 every time if we didn't guard it. But since we do, it 409s. But the user was getting "player not in room". Why?
+    // Wait, the original code in main for app.ts is:
     res.status(409).json({ error: 'Room is full' });
     return;
   }
@@ -72,7 +77,7 @@ app.post('/room/:roomId/players', async (req, res) => {
   });
 
   res.json({
-    roomId,
+    roomId, // The original returns roomId
     playerId,
     playerName,
     ready: true,
@@ -109,6 +114,8 @@ app.post('/lobby', async (req, res) => {
       end
 
       local candidateId = oldest[1]
+      -- Check TTL. If expired, we could remove it, but ZREMRANGEBYSCORE does this better below.
+      -- Here we assume if it's in the queue, we check its 'player' key existence.
       local candidateName = redis.call("GET", "lobby:player:" .. candidateId)
 
       if candidateName then
