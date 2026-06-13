@@ -151,7 +151,10 @@ export function Room() {
 
         {/* Header */}
         <div className="bg-indigo-600 text-white p-6 text-center shadow-md z-10 relative">
-          <h1 className="text-3xl font-extrabold mb-2">SaySame</h1>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <img src="/favicon.svg" alt="Logo" className="w-8 h-8 brightness-0 invert" />
+            <h1 className="text-3xl font-extrabold">SaySame</h1>
+          </div>
           <div className="flex justify-between items-center max-w-sm mx-auto">
              <span className="font-semibold text-lg truncate max-w-[40%]">{me?.name || 'You'}</span>
              <span className="text-indigo-200 text-sm">Round {Math.min(roomState.currentRound + 1, roomState.totalRounds)} / {roomState.totalRounds}</span>

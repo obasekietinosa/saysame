@@ -8,6 +8,7 @@ export function Home() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center">
+        <img src="/favicon.svg" alt="SaySame Logo" className="w-24 h-24 mx-auto mb-4" />
         <h1 className="text-5xl font-extrabold text-indigo-600 mb-2">SaySame</h1>
         <p className="text-gray-600 mb-8">The game where great minds think alike.</p>
 
