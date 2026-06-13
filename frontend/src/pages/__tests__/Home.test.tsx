@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '../../utils/test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import { Home } from '../Home';
 

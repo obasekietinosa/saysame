@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '../../utils/test-utils';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Share } from '../Share';
 import { server } from '../../setupTests';
