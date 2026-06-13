@@ -34,7 +34,7 @@ describe('App Routing', () => {
 
     // Should be on SetName page
     expect(screen.getByTestId('location-display')).toHaveTextContent('/set-name?mode=friend');
-    expect(screen.getByText("What's your name?")).toBeInTheDocument();
+    expect(screen.getByText("WHAT'S YOUR NAME?")).toBeInTheDocument();
 
     // Fill out the form
     fireEvent.change(screen.getByPlaceholderText('Enter your name'), {

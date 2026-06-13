@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
+import { Button } from '../components/Button';
+import { Input } from '../components/Input';
 
 type Player = {
   id: string;
@@ -44,7 +46,6 @@ export function Room() {
         const res = await fetch(url.toString());
 
         if (res.status === 304) {
-          // No change
           return;
         }
 
@@ -54,7 +55,6 @@ export function Room() {
 
         const data: RoomState = await res.json();
 
-        // If round advanced or game ended, reset submission state
         if (roomState && data.currentRound > roomState.currentRound) {
            setHasSubmittedThisRound(false);
            setWord('');
@@ -130,8 +130,8 @@ export function Room() {
 
   if (!roomState) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen flex items-center justify-center p-4">
+         <div className="w-12 h-12 border-[4px] border-border bg-secondary shadow-[4px_4px_0px_0px_var(--color-border)] animate-spin"></div>
       </div>
     );
   }
@@ -146,90 +146,92 @@ export function Room() {
   const isMatch = roomState.currentRoundState === 'MATCH';
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-xl overflow-hidden flex flex-col min-h-[80vh]">
+    <div className="min-h-[100dvh] flex flex-col p-4 md:p-8">
+      <div className="max-w-4xl w-full mx-auto bg-card-bg rounded-xl border-[3px] border-border shadow-[8px_8px_0px_0px_var(--color-border)] overflow-hidden flex flex-col flex-grow">
 
         {/* Header */}
-        <div className="bg-indigo-600 text-white p-6 text-center shadow-md z-10 relative">
+        <div className="bg-white border-b-[3px] border-border p-6 text-center z-10 relative">
           <div className="flex items-center justify-center gap-3 mb-2">
-            <img src="/favicon.svg" alt="Logo" className="w-8 h-8 brightness-0 invert" />
-            <h1 className="text-3xl font-extrabold">SaySame</h1>
+            <img src="/favicon.svg" alt="Logo" className="w-8 h-8 drop-shadow-[2px_2px_0px_var(--color-border)]" />
+            <h1 className="text-3xl font-black uppercase drop-shadow-[2px_2px_0px_var(--color-secondary)]">SaySame</h1>
           </div>
-          <div className="flex justify-between items-center max-w-sm mx-auto">
-             <span className="font-semibold text-lg truncate max-w-[40%]">{me?.name || 'You'}</span>
-             <span className="text-indigo-200 text-sm">Round {Math.min(roomState.currentRound + 1, roomState.totalRounds)} / {roomState.totalRounds}</span>
-             <span className="font-semibold text-lg truncate max-w-[40%]">{opponent?.name || 'Opponent'}</span>
+          <div className="flex justify-between items-center max-w-md mx-auto font-black uppercase tracking-wide">
+             <span className="text-lg truncate max-w-[40%] px-2 bg-primary text-white border-[3px] border-border shadow-[2px_2px_0px_0px_var(--color-border)]">{me?.name || 'You'}</span>
+             <span className="text-foreground text-sm bg-muted px-3 py-1 border-[3px] border-border shadow-[2px_2px_0px_0px_var(--color-border)]">Round {Math.min(roomState.currentRound + 1, roomState.totalRounds)} / {roomState.totalRounds}</span>
+             <span className="text-lg truncate max-w-[40%] px-2 bg-secondary text-foreground border-[3px] border-border shadow-[2px_2px_0px_0px_var(--color-border)]">{opponent?.name || 'Opponent'}</span>
           </div>
         </div>
 
         {/* Game Area */}
-        <div className="flex-grow p-6 flex flex-col bg-gray-50">
+        <div className="flex-grow p-4 md:p-6 flex flex-col bg-background relative z-0">
 
           {/* History */}
           <div className="flex-grow overflow-y-auto mb-6 space-y-4">
              {Array.from({ length: roomState.currentRound }).map((_, i) => (
-                <div key={i} className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
-                   <div className="text-center w-5/12 font-medium text-lg text-gray-800 break-words">{me?.words[i]}</div>
+                <div key={i} className="flex justify-between items-center bg-white p-4 rounded-xl border-[3px] border-border shadow-[4px_4px_0px_0px_var(--color-border)] transition-transform duration-300 transform scale-100 opacity-100">
+                   <div className="text-center w-5/12 font-black text-xl text-foreground break-words uppercase">{me?.words[i]}</div>
                    <div className="w-2/12 flex justify-center">
                      {me?.words[i] === opponent?.words[i] ? (
-                        <span className="text-green-500 font-bold text-xl">✓</span>
+                        <span className="text-green-500 font-black text-3xl drop-shadow-[2px_2px_0px_var(--color-border)]">✓</span>
                      ) : (
-                        <span className="text-red-500 font-bold text-xl">✗</span>
+                        <span className="text-primary font-black text-3xl drop-shadow-[2px_2px_0px_var(--color-border)]">✗</span>
                      )}
                    </div>
-                   <div className="text-center w-5/12 font-medium text-lg text-gray-800 break-words">{opponent?.words[i]}</div>
+                   <div className="text-center w-5/12 font-black text-xl text-foreground break-words uppercase">{opponent?.words[i]}</div>
                 </div>
              ))}
 
              {/* Pending current round status if someone has submitted */}
              {!gameOver && hasSubmittedThisRound && (
-               <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border-2 border-indigo-100">
-                 <div className="text-center w-5/12 font-medium text-lg text-gray-400 italic">Waiting...</div>
-                 <div className="w-2/12 flex justify-center text-gray-300">...</div>
-                 <div className="text-center w-5/12 font-medium text-lg text-gray-400 italic">Thinking...</div>
+               <div className="flex justify-between items-center bg-white p-4 rounded-xl border-[3px] border-border border-dashed opacity-80">
+                 <div className="text-center w-5/12 font-black text-lg text-foreground uppercase tracking-widest">Waiting...</div>
+                 <div className="w-2/12 flex justify-center text-foreground font-black text-2xl">...</div>
+                 <div className="text-center w-5/12 font-black text-lg text-foreground uppercase tracking-widest">Thinking...</div>
                </div>
              )}
           </div>
 
           {/* Controls */}
           {gameOver ? (
-            <div className="text-center bg-white p-8 rounded-lg shadow-md mt-auto">
-               <h2 className={`text-4xl font-extrabold mb-4 ${isMatch ? 'text-green-500' : 'text-red-500'}`}>
-                 {isMatch ? 'You Win!' : 'Game Over'}
+            <div className="text-center bg-white p-8 rounded-xl border-[3px] border-border shadow-[4px_4px_0px_0px_var(--color-border)] mt-auto z-10">
+               <h2 className={`text-5xl font-black mb-4 uppercase drop-shadow-[4px_4px_0px_var(--color-border)] ${isMatch ? 'text-green-400' : 'text-primary'}`}>
+                 {isMatch ? 'Match!' : 'Game Over'}
                </h2>
-               <p className="text-gray-600 mb-8 text-lg">
+               <p className="text-foreground font-black mb-8 text-xl uppercase tracking-wide">
                  {isMatch
                    ? `It took you ${roomState.currentRound} rounds to think alike.`
                    : "You couldn't find the same word in 10 rounds."}
                </p>
-               <button
+               <Button
+                 variant="primary"
                  onClick={() => navigate('/')}
-                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full transition duration-200"
+                 className="px-12 text-xl"
                >
                  Play Again
-               </button>
+               </Button>
             </div>
           ) : (
-            <div className="mt-auto bg-white p-6 rounded-lg shadow-md">
-               {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+            <div className="mt-auto bg-white p-4 md:p-6 rounded-xl border-[3px] border-border shadow-[4px_4px_0px_0px_var(--color-border)] z-10">
+               {error && <p className="text-primary font-bold text-sm mb-4 text-center">{error}</p>}
 
-               <form onSubmit={handleSubmitWord} className="flex gap-4">
-                 <input
+               <form onSubmit={handleSubmitWord} className="flex flex-col sm:flex-row gap-4">
+                 <Input
                    type="text"
                    value={word}
                    onChange={(e) => setWord(e.target.value)}
                    disabled={submitting || hasSubmittedThisRound}
                    placeholder={hasSubmittedThisRound ? "Waiting for opponent..." : "Enter your word..."}
-                   className="flex-grow px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 text-lg"
+                   className="flex-grow font-black text-xl uppercase placeholder:normal-case placeholder:font-medium placeholder:text-gray-400"
                    autoFocus
                  />
-                 <button
+                 <Button
                    type="submit"
+                   variant="primary"
                    disabled={!word.trim() || submitting || hasSubmittedThisRound}
-                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-md transition duration-200 disabled:opacity-50 min-w-[120px]"
+                   className="min-w-[140px] text-xl"
                  >
                    {submitting ? 'Sending...' : 'Submit'}
-                 </button>
+                 </Button>
                </form>
             </div>
           )}

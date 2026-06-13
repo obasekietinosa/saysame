@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { Input } from '../components/Input';
 
 export function Join() {
   const [roomId, setRoomId] = useState('');
@@ -13,35 +16,35 @@ export function Join() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-        <h1 className="text-3xl font-extrabold text-indigo-600 mb-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <Card className="p-8 max-w-md w-full">
+        <h1 className="text-4xl font-black text-foreground mb-4 text-center drop-shadow-[2px_2px_0px_var(--color-primary)] uppercase">
           Join a Game
         </h1>
-        <p className="text-gray-600 mb-6 text-center">
+        <p className="text-foreground font-medium mb-8 text-center">
           Enter the room code shared by your friend to join their game.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <input
+            <Input
               type="text"
               value={roomId}
               onChange={(e) => setRoomId(e.target.value)}
               placeholder="Enter Room Code"
-              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               autoFocus
             />
           </div>
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            fullWidth
             disabled={!roomId.trim()}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded transition duration-200 disabled:opacity-50"
           >
             Join
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }
