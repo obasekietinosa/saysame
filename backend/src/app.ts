@@ -59,10 +59,6 @@ app.post('/room/:roomId/players', async (req, res) => {
 
   const playerTwoId = roomHash.playerTwoId;
   if (playerTwoId) {
-    // Return room details instead of 409 error if they are just trying to join an already joined game.
-    // The previous frontend hook issue is that players would join, but not get the player details returned.
-    // However the bug says "returns player not in room after joining". The original behavior just generated a new playerId for player 2 every time if we didn't guard it. But since we do, it 409s. But the user was getting "player not in room". Why?
-    // Wait, the original code in main for app.ts is:
     res.status(409).json({ error: 'Room is full' });
     return;
   }
@@ -77,7 +73,7 @@ app.post('/room/:roomId/players', async (req, res) => {
   });
 
   res.json({
-    roomId, // The original returns roomId
+    roomId,
     playerId,
     playerName,
     ready: true,
@@ -103,7 +99,6 @@ app.post('/lobby', async (req, res) => {
     local roomId = ARGV[4]
     local lastUpdatedAt = ARGV[5]
 
-    -- Try to find the oldest valid entry
     local matchedPlayerId = nil
     local matchedPlayerName = nil
 
@@ -114,24 +109,19 @@ app.post('/lobby', async (req, res) => {
       end
 
       local candidateId = oldest[1]
-      -- Check TTL. If expired, we could remove it, but ZREMRANGEBYSCORE does this better below.
-      -- Here we assume if it's in the queue, we check its 'player' key existence.
       local candidateName = redis.call("GET", "lobby:player:" .. candidateId)
 
       if candidateName then
         matchedPlayerId = candidateId
         matchedPlayerName = candidateName
-        -- Remove the matched player from the queue
         redis.call("ZREM", "lobby:queue", candidateId)
         break
       else
-        -- Clean up dead entry and try again
         redis.call("ZREM", "lobby:queue", candidateId)
       end
     end
 
     if matchedPlayerId then
-      -- Create a room
       redis.call("HSET", "room:" .. roomId,
         "lastUpdatedAt", lastUpdatedAt,
         "currentRound", "0",
@@ -142,19 +132,15 @@ app.post('/lobby', async (req, res) => {
         "playerTwoName", playerName
       )
 
-      -- Set match notification for matched player
       redis.call("SET", "lobby:match:" .. matchedPlayerId, roomId)
       redis.call("EXPIRE", "lobby:match:" .. matchedPlayerId, 60)
 
-      -- Clean up name
       redis.call("DEL", "lobby:player:" .. matchedPlayerId)
 
       return { "MATCH", roomId, matchedPlayerId, matchedPlayerName }
     else
-      -- No match found, add to lobby with current timestamp as score for FIFO
       redis.call("ZADD", "lobby:queue", now, playerId)
       redis.call("SET", "lobby:player:" .. playerId, playerName)
-      -- 10 second TTL for the player key, acting as the keepalive timeout
       redis.call("EXPIRE", "lobby:player:" .. playerId, 10)
 
       return { "WAITING" }
@@ -206,26 +192,21 @@ app.post('/lobby', async (req, res) => {
 app.get('/lobby/:playerId', async (req, res) => {
   const { playerId } = req.params;
 
-  // Check if player has been matched
   const matchedRoomId = await redis.get(`lobby:match:${playerId}`);
 
   if (matchedRoomId) {
-    // Return room state
     const roomHash = await redis.hgetall(`room:${matchedRoomId}`);
     if (Object.keys(roomHash).length === 0) {
        res.status(404).json({ error: 'Matched room not found' });
        return;
     }
 
-    // Do NOT immediately delete the match notification, rely on TTL.
-    // This allows for client retries in case of transient network issues.
-
     res.json({
       id: matchedRoomId,
       lastUpdatedAt: roomHash.lastUpdatedAt,
       currentRound: parseInt(roomHash.currentRound || '0', 10),
       totalRounds: parseInt(roomHash.totalRounds || '10', 10),
-      currentRoundState: "PENDING", // Initial state
+      currentRoundState: "PENDING",
       players: [
         { id: roomHash.playerOneId, name: roomHash.playerOneName, words: [] },
         { id: roomHash.playerTwoId, name: roomHash.playerTwoName, words: [] }
@@ -234,11 +215,9 @@ app.get('/lobby/:playerId', async (req, res) => {
     return;
   }
 
-  // Check if player is still in the queue
   const score = await redis.zscore('lobby:queue', playerId);
 
   if (score !== null) {
-    // Only refresh TTL for the player key to keep alive, avoiding score update for FIFO
     const updated = await redis.expire(`lobby:player:${playerId}`, 10);
 
     if (updated) {
@@ -335,7 +314,6 @@ app.post('/room/:roomId/words', async (req, res) => {
     return;
   }
 
-  // Guard against submitting if game ended with a match
   if (currentRound > 0) {
     const p1LastWord = await redis.hget(`room:${roomId}:submission`, `${roomHash.playerOneId}:${currentRound - 1}`);
     const p2LastWord = await redis.hget(`room:${roomId}:submission`, `${roomHash.playerTwoId}:${currentRound - 1}`);
@@ -345,10 +323,8 @@ app.post('/room/:roomId/words', async (req, res) => {
     }
   }
 
-  // Save the word
   await redis.hset(`room:${roomId}:submission`, `${playerId}:${round}`, word);
 
-  // Check if both players have submitted for this round
   const submissions = await redis.hgetall(`room:${roomId}:submission`);
   const p1Word = submissions[`${roomHash.playerOneId}:${round}`];
   const p2Word = submissions[`${roomHash.playerTwoId}:${round}`];
@@ -362,7 +338,6 @@ app.post('/room/:roomId/words', async (req, res) => {
   const now = new Date().toISOString();
   await redis.hset(`room:${roomId}`, 'lastUpdatedAt', now);
 
-  // Reset TTL to 1 hour (3600 seconds)
   await redis.expire(`room:${roomId}`, 3600);
   await redis.expire(`room:${roomId}:submission`, 3600);
 

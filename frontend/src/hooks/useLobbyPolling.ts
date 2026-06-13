@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { API_URL } from '../config';
+import { getLobbyState, rejoinLobby } from '../utils/api';
 
 export function useLobbyPolling() {
   return useQuery({
@@ -12,21 +12,11 @@ export function useLobbyPolling() {
         throw new Error('Missing player details. Please go back to home.');
       }
 
-      const res = await fetch(`${API_URL}/lobby/${playerId}`);
+      const res = await getLobbyState(playerId);
 
       if (res.status === 404) {
         // Re-register
-        const reRegRes = await fetch(`${API_URL}/lobby`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerName }),
-        });
-
-        if (!reRegRes.ok) {
-          throw new Error('Failed to rejoin lobby');
-        }
-
-        const data = await reRegRes.json();
+        const data = await rejoinLobby(playerName);
         if (data.message === 'waiting') {
            sessionStorage.setItem('playerId', data.playerId);
         }
